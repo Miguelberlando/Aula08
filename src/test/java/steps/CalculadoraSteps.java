@@ -11,7 +11,7 @@ import static org.junit.Assert.assertNotNull;
 // Classe de implementação dos steps (passos) do Gherkin
 public class CalculadoraSteps {
     // Variáveis para armazenar estado entre os steps
-    private int num1, num2;
+    private int num1, num2
     private int resultado;
     private Exception exception;
 
