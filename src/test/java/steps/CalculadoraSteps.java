@@ -29,7 +29,7 @@ public class CalculadoraSteps {
     }
 
     // Step para verificar o resultado
-    @Então("o resultado deve ser {int}")
+    @Então("o resultado tem que ser {int}")
     public void verificar_resultado(int esperado) {
         assertEquals(esperado, resultado);  // Asserção JUnit
     }
