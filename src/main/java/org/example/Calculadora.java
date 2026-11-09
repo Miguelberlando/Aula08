@@ -11,6 +11,6 @@ public class Calculadora {
             // Lança a exceção com a mensagem exata que o seu .feature espera
             throw new ArithmeticException("Divisão por zero não permitida");
         }
-        return a / b;
+        return a / b; // falta tratamento de divisão por zero!
     }
 }
