@@ -26,6 +26,12 @@
         <artifactId>cucumber-junit</artifactId>
         <version>7.14.0</version>  <!-- Integração com JUnit -->
     </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>RELEASE</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
 </project>

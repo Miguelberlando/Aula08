@@ -1,0 +1,100 @@
+# Define o nome de exibição do pipeline na aba "Actions" do GitHub
+name: Desafio Integrado CI/CD
+
+# Gatilhos automáticos: dispara a esteira a cada envio de código (push) ou abertura/atualização de Pull Request
+on: [push, pull_request]
+
+jobs:
+  # ============================================================================
+  # JOB 1: COMPILAÇÃO BASE (Etapa inicial obrigatória antes do paralelismo)
+  # ============================================================================
+  build:
+    runs-on: ubuntu-latest  # Provisiona uma máquina virtual Linux limpa gerenciada pelo GitHub
+    steps:
+      - uses: actions/checkout@v4  # Baixa o código-fonte do repositório para dentro da máquina virtual
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4  # Instala o Java 25 (compatível com o pom.xml do projeto)
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: 'maven'  # Salva dependências do Maven em cache para acelerar execuções futuras
+
+      - name: Compile Project
+        run: mvn clean test-compile  # Limpa builds antigos e valida se o código e os testes compilam sem erros
+
+  # ============================================================================
+  # JOB 2: TESTES UNITÁRIOS E COBERTURA > 85% (Executa em paralelo)
+  # ============================================================================
+  unit-tests:
+    needs: build  # Aguarda o "build" terminar e inicia simultaneamente com "integration-tests" e "security-check"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Run Unit Tests and JaCoCo
+        run: mvn jacoco:prepare-agent test jacoco:report  # Instrumenta o código, roda testes unitários e gera relatório JaCoCo
+
+      - name: Check Coverage > 85%
+        # Valida o relatório gerado e falha o pipeline imediatamente (haltOnFailure=true) se a cobertura for <= 85% (0.85)
+        run: mvn jacoco:check -Djacoco.haltOnFailure=true -Djacoco.minimum=0.85
+
+  # ============================================================================
+  # JOB 3: TESTES DE INTEGRAÇÃO COM TESTCONTAINERS (Executa em paralelo)
+  # ============================================================================
+  integration-tests:
+    needs: build  # Roda ao mesmo tempo que "unit-tests" em uma máquina virtual separada
+    runs-on: ubuntu-latest  # O ambiente Ubuntu do GitHub já possui Docker nativo para subir os containers do TestContainers
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Run Integration Tests with TestContainers
+        # Ativa o perfil de integração (-Pintegration-tests) e pula testes unitários (-DskipUnitTests) para evitar duplicidade
+        run: mvn verify -Pintegration-tests -DskipUnitTests
+
+  # ============================================================================
+  # JOB 4: VARREDURA DE SEGURANÇA OWASP (Executa em paralelo)
+  # ============================================================================
+  security-check:
+    needs: build  # Roda em paralelo aos testes para inspecionar bibliotecas de terceiros
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: OWASP Dependency-Check
+        # Verifica vulnerabilidades conhecidas (CVEs) nas dependências e bloqueia o build se qualquer falha for achada (CVSS >= 0)
+        run: mvn org.owasp:dependency-check-maven:check -DfailBuildOnCVSS=0
+
+  # ============================================================================
+  # JOB 5: DEPLOY CONDICIONADO (Portão final de sincronização / Fan-in)
+  # ============================================================================
+  deploy:
+    # Só inicia se TODOS os três jobs paralelos (unit-tests, integration-tests e security-check) passarem com sucesso
+    needs: [unit-tests, integration-tests, security-check]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy Application
+        run: echo "Todos os testes passaram, cobertura > 85% e zero vulnerabilidades! Realizando deploy..."
