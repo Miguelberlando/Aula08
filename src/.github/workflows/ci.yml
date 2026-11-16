@@ -1,0 +1,72 @@
+name: Java CI Pipeline  # Nome da pipeline
+on: [push, pull_request]  # Dispara em pushes e pull requests
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest  # Executa em container Ubuntu
+    steps:
+      - uses: actions/checkout@v3  # Faz checkout do código
+        with:
+          fetch-depth: 0  # Baixa o histórico completo para o SonarQube comparar PRs
+
+      # Configura ambiente Java
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'  # Usa JDK 17
+          distribution: 'temurin'  # Distribuição Eclipse Temurin
+
+      # Etapa de build
+      - name: Build with Maven
+        run: mvn clean package -DskipTests  # Limpa e gera o pacote sem rodar testes duplicados
+
+      # Etapa de testes unitários e relatório JaCoCo
+      - name: Run Unit Tests and Generate JaCoCo Report
+        run: mvn jacoco:prepare-agent test jacoco:report  # Executa testes e gera cobertura JaCoCo
+
+      # Publica o relatório JaCoCo como artefato da execução
+      - name: Upload JaCoCo Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: target/site/jacoco/
+
+      # Verificação de qualidade de código (Checkstyle)
+      - name: Code Quality Check
+        run: mvn checkstyle:check  # Valida estilo de código
+        continue-on-error: false  # Falha o build se encontrar erros
+
+      # Análise estática com PMD
+      - name: PMD Static Analysis
+        run: mvn pmd:check  # Analisa más práticas e complexidade no código
+        continue-on-error: false  # Falha o build se encontrar erros
+
+      # Análise estática com SonarQube e bloqueio pelo Quality Gate
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@master
+        with:
+          args: >
+            -Dsonar.qualitygate.wait=true
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}  # Token de autenticação
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}  # URL do SonarQube
+
+  # Etapa de Deploy com aprovação manual e rollback automático
+  deploy:
+    needs: build-and-test  # Aguarda a conclusão com sucesso do build, testes e SonarQube
+    runs-on: ubuntu-latest
+    environment: production  # Exige aprovação manual configurada no ambiente 'production'
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Deploy Application
+        run: |
+          echo "Realizando deploy da aplicação aprovada..."
+          # Coloque aqui o comando ou script real de deploy (ex: ./scripts/deploy.sh)
+
+      - name: Automatic Rollback
+        if: failure()  # Executa apenas se o passo de deploy acima falhar
+        run: |
+          echo "Falha detectada no deploy! Executando rollback automático..."
+          # Coloque aqui o comando ou script de reversão (ex: ./scripts/rollback.sh)
