@@ -61,5 +61,10 @@ public class CalculadoraDesconto {
 
         return valor * 0.12;
     }
+    public void testarErro() {
+        String texto = null;
+        System.out.println(texto.length());
+    }
+
 }
 
