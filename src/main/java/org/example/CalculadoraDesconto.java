@@ -1,5 +1,4 @@
-package org.example;
-
+package com.exemplo.projeto; // Mantenha o package original do seu arquivo
 
 public class CalculadoraDesconto {
 
@@ -14,8 +13,10 @@ public class CalculadoraDesconto {
             desconto = valorCompra * 0.20;
         } else if ("REGULAR".equalsIgnoreCase(tipoCliente)) {
             desconto = valorCompra * 0.10;
-        } else {
+        } else if ("NOVO".equalsIgnoreCase(tipoCliente)) {
             desconto = valorCompra * 0.05;
+        } else {
+            desconto = valorCompra * 0.02;
         }
 
         if (cupomAtivo) {
@@ -38,6 +39,27 @@ public class CalculadoraDesconto {
             return true;
         }
 
+        if ("SUL".equalsIgnoreCase(regiao) && valorCompra >= 150.0) {
+            return true;
+        }
+
         return false;
     }
+
+    public double calcularImposto(double valor, String categoria) {
+        if (valor <= 0) {
+            return 0.0;
+        }
+
+        if ("ELETRONICOS".equalsIgnoreCase(categoria)) {
+            return valor * 0.18;
+        } else if ("LIVROS".equalsIgnoreCase(categoria)) {
+            return 0.0;
+        } else if ("ALIMENTOS".equalsIgnoreCase(categoria)) {
+            return valor * 0.07;
+        }
+
+        return valor * 0.12;
+    }
 }
+
